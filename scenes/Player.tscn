@@ -1,0 +1,32 @@
+[gd_scene load_steps=6 format=2]
+
+[ext_resource path="res://scripts/Player.gd" type="Script" id=1]
+[ext_resource path="res://scripts/Camera.gd" type="Script" id=2]
+[ext_resource path="res://scenes/Character.tscn" type="PackedScene" id=3]
+[ext_resource path="res://scenes/default_env.tres" type="Environment" id=4]
+
+[sub_resource type="CapsuleShape" id=1]
+radius = 0.35
+height = 0.9
+
+[node name="Player" type="KinematicBody"]
+script = ExtResource( 1 )
+
+[node name="Camera" type="Camera" parent="."]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.757018, -0.326171 )
+environment = ExtResource( 4 )
+script = ExtResource( 2 )
+
+[node name="CollisionShape" type="CollisionShape" parent="."]
+transform = Transform( 1.26265, 0, 0, 0, -3.48733e-08, 0.797807, 0, -1.26265, -5.51921e-08, 0, 0.603461, 0 )
+shape = SubResource( 1 )
+
+[node name="Character" parent="." instance=ExtResource( 3 )]
+
+[node name="NetworkTickRate" type="Timer" parent="."]
+wait_time = 0.03
+autostart = true
+
+[node name="MovementTween" type="Tween" parent="."]
+
+[connection signal="timeout" from="NetworkTickRate" to="." method="_on_NetworkTickRate_timeout"]
