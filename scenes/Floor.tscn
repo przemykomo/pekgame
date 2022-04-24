@@ -7,11 +7,9 @@
 [sub_resource type="CubeMesh" id=1]
 
 [sub_resource type="SpatialMaterial" id=2]
-detail_enabled = true
-detail_blend_mode = 0
-detail_uv_layer = 0
-detail_albedo = ExtResource( 1 )
-uv1_scale = Vector3( 100, 100, 100 )
+albedo_texture = ExtResource( 1 )
+uv1_scale = Vector3( 64, 64, 64 )
+uv1_triplanar = true
 
 [node name="Floor" type="StaticBody"]
 transform = Transform( 64, 0, 0, 0, 1, 0, 0, 0, 64, 0, 0, 0 )

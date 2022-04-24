@@ -1,4 +1,4 @@
-extends KinematicBody
+extends RigidBody
 
 var velocity = Vector3()
 var puppet_position = Vector3()
@@ -11,7 +11,6 @@ const JUMP_VELOCITY = 3
 onready var Camera = $Camera
 onready var network_tick_rate = $NetworkTickRate
 onready var movement_tween = $MovementTween
-onready var GRAVITY = ProjectSettings.get("physics/3d/default_gravity") / 1000
 const CAMERA_TURN_SPEED = 500
 
 func _ready():
@@ -47,9 +46,10 @@ func _physics_process(delta: float):
 		move_forward_back(int(Input.is_key_pressed(KEY_S)) - int(Input.is_key_pressed(KEY_W)))
 		move_left_right(int(Input.is_key_pressed(KEY_D)) - int(Input.is_key_pressed(KEY_A)))
 		
-		if Input.is_action_just_pressed("jump"):
-			if is_on_floor():
-				velocity.y += JUMP_VELOCITY
+		if Input.is_action_just_pressed("jump") && $RayCast.is_colliding():
+			apply_central_impulse(Vector3(0, 5, 0))
+#			if is_on_floor():
+#				velocity.y += JUMP_VELOCITY
 		if Input.is_action_just_pressed("throw"):
 			rpc("spawn_grenade", get_tree().get_network_unique_id())
 	else:
@@ -61,13 +61,13 @@ func _physics_process(delta: float):
 		rotation.y = puppet_rotation.y
 		Camera.rotation.x = puppet_rotation.x
 	
-	if is_on_floor():
-		velocity.y -= GRAVITY / 100
-	else:
-		velocity.y -= GRAVITY
+#	if is_on_floor():
+#		velocity.y -= GRAVITY / 100
+#	else:
+#		velocity.y -= GRAVITY
 	
-	if !movement_tween.is_active():
-		velocity = move_and_slide(velocity, Vector3.UP, true)
+#	if !movement_tween.is_active():
+#		velocity = move_and_slide(velocity, Vector3.UP, true)
 
 puppet func update_state(p_pos, p_vel, p_rot):
 	puppet_position = p_pos
@@ -85,7 +85,8 @@ func _on_NetworkTickRate_timeout():
 
 sync func spawn_grenade(id):
 	var grenade_instance = preload("res://scenes/Grenade.tscn").instance()
-	grenade_instance.name = "Grenade@" + str(Network.object_name_index)
-	get_tree().get_current_scene().add_child(grenade_instance)
-	grenade_instance.global_transform.origin = global_transform.origin + Vector3.UP
+	grenade_instance.name = "Grenade" + str(Network.object_name_index)
 	Network.object_name_index += 1
+	get_tree().get_current_scene().add_child(grenade_instance)
+	grenade_instance.global_transform.origin = Camera.global_transform.origin
+	grenade_instance.linear_velocity = -Camera.global_transform.basis.z * 10

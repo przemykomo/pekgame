@@ -23,6 +23,10 @@ Global="*res://scripts/Global.gd"
 
 singletons=[  ]
 
+[global]
+
+gravity=false
+
 [input]
 
 jump={
@@ -39,7 +43,6 @@ throw={
 [physics]
 
 common/enable_pause_aware_picking=true
-3d/default_gravity=98.0
 
 [rendering]
 
