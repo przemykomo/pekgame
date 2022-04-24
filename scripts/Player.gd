@@ -5,7 +5,6 @@ var puppet_position = Vector3()
 var puppet_velocity = Vector3()
 var puppet_rotation = Vector2()
 
-
 const PLAYER_MOVE_SPEED = 4
 const JUMP_VELOCITY = 3
 
@@ -40,17 +39,9 @@ func move_forward_back(in_direction: int):
 
 func move_left_right(in_direction: int):
 	velocity += get_transform().basis.x * in_direction * PLAYER_MOVE_SPEED
-#
-#func _process(delta: float):
-#	velocity = Vector3(0, self.velocity.y, 0)
-#
-#	if is_network_master():
-#		move_forward_back(int(Input.is_key_pressed(KEY_S)) - int(Input.is_key_pressed(KEY_W)))
-#		move_left_right(int(Input.is_key_pressed(KEY_D)) - int(Input.is_key_pressed(KEY_A)))
 
 func _physics_process(delta: float):
 	velocity = Vector3(0, self.velocity.y, 0)
-#	var snap_vector = Vector3(0, -1, 0)
 	
 	if is_network_master():
 		move_forward_back(int(Input.is_key_pressed(KEY_S)) - int(Input.is_key_pressed(KEY_W)))
@@ -59,7 +50,8 @@ func _physics_process(delta: float):
 		if Input.is_action_just_pressed("jump"):
 			if is_on_floor():
 				velocity.y += JUMP_VELOCITY
-#				snap_vector = Vector3(0, 0, 0)
+		if Input.is_action_just_pressed("throw"):
+			rpc("spawn_grenade", get_tree().get_network_unique_id())
 	else:
 		global_transform.origin = puppet_position
 		
@@ -74,7 +66,6 @@ func _physics_process(delta: float):
 	else:
 		velocity.y -= GRAVITY
 	
-#	velocity = move_and_slide_with_snap(velocity, snap_vector, Vector3(0, 1, 0), true)
 	if !movement_tween.is_active():
 		velocity = move_and_slide(velocity, Vector3.UP, true)
 
@@ -92,3 +83,9 @@ func _on_NetworkTickRate_timeout():
 	else:
 		network_tick_rate.stop()
 
+sync func spawn_grenade(id):
+	var grenade_instance = preload("res://scenes/Grenade.tscn").instance()
+	grenade_instance.name = "Grenade@" + str(Network.object_name_index)
+	get_tree().get_current_scene().add_child(grenade_instance)
+	grenade_instance.global_transform.origin = global_transform.origin + Vector3.UP
+	Network.object_name_index += 1
