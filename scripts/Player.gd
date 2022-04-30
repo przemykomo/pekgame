@@ -4,13 +4,14 @@ export var jump_velocity = 5
 export var acceleration = 5
 export var accel_multiplier = 1.0
 export var speed = 25
-export var max_speed = 10
+export var max_speed = 6
 export (float, 0.01,1.0) var stop_speed = 0.1
 
 var velocity = Vector3()
 
 var mouse_input = Vector2()
 onready var eyes = $Body/Camera
+onready var aimcast = $Body/Camera/AimCast
 onready var body = $Body
 onready var feet = $Feet
 export var view_sensitivity = 60.0
@@ -37,8 +38,6 @@ func _physics_process(delta):
 		#is_on_floor = false
 		
 		old_move_input = move_input
-		move_input = Vector2.ZERO
-		#movement input
 		move_input = Input.get_vector("left","right","down","up")
 		if old_move_input != move_input:
 			rpc('update_input', move_input)
@@ -49,26 +48,29 @@ func _physics_process(delta):
 			body.rotation_degrees.y -= mouse_input.x * view_sensitivity * delta;
 			mouse_input = Vector2.ZERO
 			rpc('update_rotation', eyes.rotation_degrees.x, body.rotation_degrees.y)
-			
-			# TODO: send rotation
+		
 		if Input.is_action_just_pressed("throw"):
 			rpc("spawn_grenade", get_tree().get_network_unique_id())
 		
 		if Input.is_action_just_pressed("jump"): # and is_on_floor:
 			accel_multiplier = 0.1
 			rpc('jump')
-	
-	var dir = Vector3()
-	dir += move_input.x*body.global_transform.basis.x;
-	dir -= move_input.y*body.global_transform.basis.z;
-	velocity = lerp(velocity, dir * speed, acceleration * accel_multiplier * delta)
-	add_central_force(velocity)
 		
+		if Input.is_action_just_pressed("fire"):
+			rpc('fire')
+
 func _integrate_forces(state):
+	if state.linear_velocity.length() < max_speed:
+		var dir = Vector3()
+		dir += move_input.x * body.global_transform.basis.x;
+		dir -= move_input.y * body.global_transform.basis.z;
+		velocity = lerp(velocity, dir * speed, acceleration * accel_multiplier / 60)
+		add_central_force(velocity)
+	
 	#if is_network_master():
 		#limit max speed
-	if state.linear_velocity.length()>max_speed:
-		state.linear_velocity=state.linear_velocity.normalized()*max_speed
+#	if state.linear_velocity.length() > max_speed:
+#		state.linear_velocity=state.linear_velocity.normalized() * max_speed
 		#artificial stopping movement i.e not using physics
 	if move_input.length() < 0.2:
 		state.linear_velocity.x = lerp(state.linear_velocity.x,0,stop_speed)
@@ -83,6 +85,18 @@ func _input(event):
 	if is_network_master() && event is InputEventMouseMotion:
 		mouse_input = event.relative;
 
+sync func fire():
+	if aimcast.is_colliding():
+		print(aimcast.get_collision_point())
+		var scene = get_tree().get_current_scene()
+		
+		var particle_instance = preload("res://scenes/BulletParticle.tscn").instance()
+		scene.add_child(particle_instance)
+		particle_instance.global_transform.origin = aimcast.get_collision_point()
+		var collision_normal : Vector3 = aimcast.get_collision_normal()
+		var current_normal : Vector3 = particle_instance.global_transform.basis.z
+		particle_instance.global_rotate(collision_normal.cross(current_normal), -acos(collision_normal.dot(current_normal) / (collision_normal.length() * current_normal.length())))
+
 sync func spawn_grenade(id):
 	var scene = get_tree().get_current_scene()
 	if not scene.has_node(str(id)):
@@ -93,7 +107,7 @@ sync func spawn_grenade(id):
 	grenade_instance.name = "Grenade" + str(Network.object_name_index)
 	
 	Network.object_name_index += 1
-	get_tree().get_current_scene().add_child(grenade_instance)
+	scene.add_child(grenade_instance)
 	grenade_instance.global_transform.origin = thrower_eyes.global_transform.origin
 	grenade_instance.linear_velocity = -thrower_eyes.global_transform.basis.z * 10
 

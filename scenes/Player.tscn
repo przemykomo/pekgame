@@ -45,4 +45,8 @@ material/0 = ExtResource( 2 )
 transform = Transform( 1, 0, 7.65773e-09, 0, 1, 0, -7.65773e-09, 0, 1, 1.15624e-09, 0.757, -0.326 )
 environment = ExtResource( 4 )
 
+[node name="AimCast" type="RayCast" parent="Body/Camera"]
+enabled = true
+cast_to = Vector3( 0, 0, -100 )
+
 [connection signal="timeout" from="NetworkSyncTimer" to="." method="_on_NetworkSyncTimer_timeout"]
