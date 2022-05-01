@@ -12,6 +12,8 @@ var velocity = Vector3()
 var mouse_input = Vector2()
 onready var eyes = $Body/Camera
 onready var aimcast = $Body/Camera/AimCast
+onready var reach = $Body/Camera/Reach
+onready var hand = $Body/Camera/Hand
 onready var body = $Body
 onready var feet = $Feet
 export var view_sensitivity = 60.0
@@ -19,11 +21,45 @@ export var is_on_floor = false
 var old_move_input = Vector2.ZERO
 export var move_input = Vector2.ZERO
 
+var weapon_to_spawn
+var weapon_to_drop
+
 func _ready():
 	if is_network_master():
 		eyes.current = true
 		linear_damp = 1.0
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+func _process(delta):
+	if reach.is_colliding():
+		if reach.get_collider().get_name() == "Gun A":
+			weapon_to_spawn = preload("res://scenes/Gun A Model.tscn").instance()
+		elif reach.get_collider().get_name() == "Gun B":
+			weapon_to_spawn = preload("res://scenes/Gun B Model.tscn").instance()
+		else:
+			weapon_to_spawn = null
+	else:
+		weapon_to_spawn = null
+	
+	#todo: fix out of bounds and networking
+	if hand.get_child_count() > 0:
+		if hand.get_child(0).get_name() == "Gun A Model":
+			weapon_to_drop = preload("res://scenes/Gun A.tscn").instance()
+		elif hand.get_child(0).get_name() == "Gun B Model":
+			weapon_to_drop = preload("res://scenes/Gun B.tscn").instance()
+	else:
+		weapon_to_drop = null
+	
+	if Input.is_action_just_pressed("interract"):
+		if weapon_to_spawn != null:
+			if hand.get_child_count() > 0:
+				get_tree().get_current_scene().add_child(weapon_to_drop)
+				weapon_to_drop.global_transform = hand.global_transform
+				weapon_to_drop.dropped = true
+				hand.get_child(0).queue_free()
+			reach.get_collider().queue_free()
+			hand.add_child(weapon_to_spawn)
+			weapon_to_spawn.rotation = hand.rotation
 
 func _physics_process(delta):
 	if feet.is_colliding():
@@ -77,15 +113,16 @@ func _input(event):
 
 sync func fire():
 	if aimcast.is_colliding():
-		print(aimcast.get_collision_point())
 		var scene = get_tree().get_current_scene()
 		
-		var particle_instance = preload("res://scenes/BulletParticle.tscn").instance()
-		scene.add_child(particle_instance)
-		particle_instance.global_transform.origin = aimcast.get_collision_point()
-		var collision_normal : Vector3 = aimcast.get_collision_normal()
-		var current_normal : Vector3 = particle_instance.global_transform.basis.z
-		particle_instance.global_rotate(collision_normal.cross(current_normal).normalized(), -acos(collision_normal.dot(current_normal) / (collision_normal.length() * current_normal.length())))
+		var target = aimcast.get_collider()
+		if target.is_in_group("players"):
+			print("hit enemy")
+		else:
+			var bullet_decal = preload("res://scenes/BulletDecal.tscn").instance()
+			target.add_child(bullet_decal)
+			bullet_decal.global_transform.origin = aimcast.get_collision_point()
+			bullet_decal.look_at(aimcast.get_collision_point() + aimcast.get_collision_normal(), Vector3.UP)
 
 sync func spawn_grenade():
 	var scene = get_tree().get_current_scene()
