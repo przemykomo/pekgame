@@ -16,6 +16,7 @@ onready var reach = $Body/Camera/Reach
 onready var hand = $Body/Camera/Hand
 onready var body = $Body
 onready var feet = $Feet
+onready var anim_play = $Body/Camera/AnimationPlayer
 export var view_sensitivity = 60.0
 export var is_on_floor = false
 var old_move_input = Vector2.ZERO
@@ -31,6 +32,9 @@ func _ready():
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 func _process(delta):
+	if Input.is_action_just_pressed("menu"):
+		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED else Input.MOUSE_MODE_CAPTURED)
+	
 	if reach.is_colliding():
 		if reach.get_collider().get_name() == "Gun A":
 			weapon_to_spawn = preload("res://scenes/Gun A Model.tscn").instance()
@@ -41,7 +45,7 @@ func _process(delta):
 	else:
 		weapon_to_spawn = null
 	
-	#todo: fix out of bounds and networking
+	#todo: networking
 	if hand.get_child_count() > 0:
 		if hand.get_child(0).get_name() == "Gun A Model":
 			weapon_to_drop = preload("res://scenes/Gun A.tscn").instance()
@@ -50,16 +54,8 @@ func _process(delta):
 	else:
 		weapon_to_drop = null
 	
-	if Input.is_action_just_pressed("interract"):
-		if weapon_to_spawn != null:
-			if hand.get_child_count() > 0:
-				get_tree().get_current_scene().add_child(weapon_to_drop)
-				weapon_to_drop.global_transform = hand.global_transform
-				weapon_to_drop.dropped = true
-				hand.get_child(0).queue_free()
-			reach.get_collider().queue_free()
-			hand.add_child(weapon_to_spawn)
-			weapon_to_spawn.rotation = hand.rotation
+	if is_network_master() && Input.is_action_just_pressed("interract"):
+		rpc("grab_weapon")
 
 func _physics_process(delta):
 	if feet.is_colliding():
@@ -71,6 +67,8 @@ func _physics_process(delta):
 		move_input = Input.get_vector("left","right","down","up")
 		if old_move_input != move_input:
 			rpc('update_input', move_input)
+		if move_input != Vector2.ZERO:
+			anim_play.play("Bobbing")
 		
 		if mouse_input.length() > 0:
 			eyes.rotation_degrees.x -= mouse_input.y * view_sensitivity * delta;
@@ -134,6 +132,17 @@ sync func spawn_grenade():
 	scene.add_child(grenade_instance)
 	grenade_instance.global_transform.origin = eyes.global_transform.origin
 	grenade_instance.linear_velocity = -eyes.global_transform.basis.z * 10
+
+sync func grab_weapon():
+	if weapon_to_spawn != null:
+		if hand.get_child_count() > 0:
+			get_tree().get_current_scene().add_child(weapon_to_drop)
+			weapon_to_drop.global_transform = hand.global_transform
+			weapon_to_drop.dropped = true
+			hand.get_child(0).queue_free()
+		reach.get_collider().queue_free()
+		hand.add_child(weapon_to_spawn)
+		weapon_to_spawn.rotation = hand.rotation
 
 master func jump():
 	if feet.is_colliding():
