@@ -38,23 +38,23 @@ func _process(delta):
 		if Input.is_action_just_pressed("interract") && reach.is_colliding():
 			rpc("grab_weapon", reach.get_collider().get_path())
 		if Input.is_action_just_pressed("debug"):
-			rpc("debug_action")
+			rpc("debug_action", randi() % Global.weapons.size())
 
-sync func debug_action():
+sync func debug_action(weapon_id):
 	var weapon_instance = preload("res://scenes/Weapon.tscn").instance()
-	weapon_instance.weapon_mechanics = Global.weapons[randi() % Global.weapons.size()]
-	get_tree().get_current_scene().add_child(weapon_instance)
+	weapon_instance.weapon_mechanics = Global.weapons[weapon_id]
+	get_tree().get_current_scene().get_node("SyncBodies").add_child(weapon_instance)
 	weapon_instance.global_transform.origin = Vector3(0, 10, 0)
 
 sync func grab_weapon(path):
 	var collider = get_tree().get_current_scene().get_node(path)
 	
-	if collider.is_in_group("dropped_weapons"):
+	if collider != null && collider.is_in_group("dropped_weapons"):
 		if weapon_mechanics != null:
 			var weapon_to_drop = preload("res://scenes/Weapon.tscn").instance()
 			weapon_to_drop.dropped = true
 			weapon_to_drop.weapon_mechanics = weapon_mechanics
-			get_tree().get_current_scene().add_child(weapon_to_drop)
+			get_tree().get_current_scene().get_node("SyncBodies").add_child(weapon_to_drop)
 			weapon_to_drop.global_transform = hand.global_transform
 			if hand.get_child_count() > 0:
 				hand.get_child(0).queue_free()
@@ -125,7 +125,7 @@ sync func spawn_grenade():
 	grenade_instance.name = "Grenade" + str(Network.object_name_index)
 	
 	Network.object_name_index += 1
-	scene.add_child(grenade_instance)
+	scene.get_node("SyncBodies").add_child(grenade_instance)
 	grenade_instance.global_transform.origin = eyes.global_transform.origin
 	grenade_instance.linear_velocity = -eyes.global_transform.basis.z * 10
 

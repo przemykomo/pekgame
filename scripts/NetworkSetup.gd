@@ -8,6 +8,7 @@ func _on_IpAddress_text_changed(new_text):
 
 func _on_Host_pressed():
 	Network.create_server()
+	get_tree().get_current_scene().get_node("SyncBodies").start()
 	hide()
 	get_tree().get_current_scene().get_node("HUD").visible = true
 	
