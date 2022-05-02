@@ -24,8 +24,10 @@ export var move_input = Vector2.ZERO
 
 var weapon_to_spawn
 var weapon_to_drop
+var weapon
 
 func _ready():
+	weapon = Global.weapons["gun1"]
 	if is_network_master():
 		eyes.current = true
 		linear_damp = 1.0
@@ -34,18 +36,20 @@ func _ready():
 func _process(delta):
 	if Input.is_action_just_pressed("menu"):
 		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED else Input.MOUSE_MODE_CAPTURED)
-	
-	if reach.is_colliding():
-		if reach.get_collider().get_name() == "Gun A":
-			weapon_to_spawn = preload("res://scenes/Gun A Model.tscn").instance()
-		elif reach.get_collider().get_name() == "Gun B":
-			weapon_to_spawn = preload("res://scenes/Gun B Model.tscn").instance()
-		else:
-			weapon_to_spawn = null
+
+	if is_network_master() && Input.is_action_just_pressed("interract"):
+		if reach.is_colliding():
+			rpc("grab_weapon", reach.get_collider().get_path())
+
+sync func grab_weapon(path):
+	var collider = get_tree().get_current_scene().get_node(path)
+	if collider.get_name() == "Gun A":
+		weapon_to_spawn = preload("res://scenes/Gun A Model.tscn").instance()
+	elif collider.get_name() == "Gun B":
+		weapon_to_spawn = preload("res://scenes/Gun B Model.tscn").instance()
 	else:
 		weapon_to_spawn = null
 	
-	#todo: networking
 	if hand.get_child_count() > 0:
 		if hand.get_child(0).get_name() == "Gun A Model":
 			weapon_to_drop = preload("res://scenes/Gun A.tscn").instance()
@@ -53,9 +57,16 @@ func _process(delta):
 			weapon_to_drop = preload("res://scenes/Gun B.tscn").instance()
 	else:
 		weapon_to_drop = null
-	
-	if is_network_master() && Input.is_action_just_pressed("interract"):
-		rpc("grab_weapon")
+		
+	if weapon_to_spawn != null:
+		if hand.get_child_count() > 0:
+			get_tree().get_current_scene().add_child(weapon_to_drop)
+			weapon_to_drop.global_transform = hand.global_transform
+			weapon_to_drop.dropped = true
+			hand.get_child(0).queue_free()
+		collider.queue_free()
+		hand.add_child(weapon_to_spawn)
+		weapon_to_spawn.rotation = hand.rotation
 
 func _physics_process(delta):
 	if feet.is_colliding():
@@ -110,18 +121,8 @@ func _input(event):
 		mouse_input = event.relative;
 
 sync func fire():
-	if aimcast.is_colliding():
-		var scene = get_tree().get_current_scene()
-		
-		var target = aimcast.get_collider()
-		if target.is_in_group("players"):
-			print("hit enemy")
-		else:
-			var bullet_decal = preload("res://scenes/BulletDecal.tscn").instance()
-			target.add_child(bullet_decal)
-			bullet_decal.global_transform.origin = aimcast.get_collision_point()
-			bullet_decal.look_at(aimcast.get_collision_point() + aimcast.get_collision_normal(), Vector3.UP)
-
+	weapon.use(self)
+	
 sync func spawn_grenade():
 	var scene = get_tree().get_current_scene()
 	
@@ -132,17 +133,6 @@ sync func spawn_grenade():
 	scene.add_child(grenade_instance)
 	grenade_instance.global_transform.origin = eyes.global_transform.origin
 	grenade_instance.linear_velocity = -eyes.global_transform.basis.z * 10
-
-sync func grab_weapon():
-	if weapon_to_spawn != null:
-		if hand.get_child_count() > 0:
-			get_tree().get_current_scene().add_child(weapon_to_drop)
-			weapon_to_drop.global_transform = hand.global_transform
-			weapon_to_drop.dropped = true
-			hand.get_child(0).queue_free()
-		reach.get_collider().queue_free()
-		hand.add_child(weapon_to_spawn)
-		weapon_to_spawn.rotation = hand.rotation
 
 master func jump():
 	if feet.is_colliding():
