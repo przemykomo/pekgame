@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=2]
+
+[sub_resource type="SphereMesh" id=2]
+
+[sub_resource type="SpatialMaterial" id=3]
+albedo_color = Color( 0.2, 0.635294, 0.141176, 1 )
+metallic = 0.83
+metallic_specular = 1.0
+
+[node name="GrenadeMesh" type="MeshInstance"]
+transform = Transform( 0.1, 0, 0, 0, 0.1, 0, 0, 0, 0.1, 0, 0, 0 )
+mesh = SubResource( 2 )
+material/0 = SubResource( 3 )

@@ -1,10 +1,12 @@
-[gd_scene load_steps=9 format=2]
+[gd_scene load_steps=11 format=2]
 
 [ext_resource path="res://scripts/Player.gd" type="Script" id=1]
 [ext_resource path="res://materials/Character.tres" type="Material" id=2]
 [ext_resource path="res://assets/amogus.obj" type="ArrayMesh" id=3]
 [ext_resource path="res://scenes/default_env.tres" type="Environment" id=4]
 [ext_resource path="res://scripts/Hand.gd" type="Script" id=5]
+[ext_resource path="res://assets/sounds/216675__hitrison__stick-swoosh-whoosh.ogg" type="AudioStream" id=6]
+[ext_resource path="res://assets/sounds/427598__michorvath__ar15-pistol-shot.ogg" type="AudioStream" id=7]
 
 [sub_resource type="CapsuleShape" id=1]
 radius = 0.32
@@ -66,12 +68,6 @@ script = ExtResource( 1 )
 transform = Transform( 1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0.489746, 0.00128603 )
 shape = SubResource( 1 )
 
-[node name="NetworkSyncTimer" type="Timer" parent="."]
-wait_time = 0.05
-autostart = true
-
-[node name="MovementTween" type="Tween" parent="."]
-
 [node name="Feet" type="RayCast" parent="."]
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0662844, 0 )
 enabled = true
@@ -107,4 +103,12 @@ sway_right = Vector3( 0, -0.2, 0 )
 anims/Bobbing = SubResource( 2 )
 anims/RESET = SubResource( 3 )
 
-[connection signal="timeout" from="NetworkSyncTimer" to="." method="_on_NetworkSyncTimer_timeout"]
+[node name="ThrowAudio" type="AudioStreamPlayer3D" parent="."]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.642504, 0 )
+stream = ExtResource( 6 )
+
+[node name="GunshotAudio" type="AudioStreamPlayer3D" parent="."]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.642504, 0 )
+stream = ExtResource( 7 )
+unit_db = -12.0
+pitch_scale = 1.53

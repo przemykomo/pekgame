@@ -13,7 +13,7 @@ func _input(event):
 		mouse_mov = -event.relative.x
 
 func _process(delta):
-	if mouse_mov != null:
+	if is_network_master() && mouse_mov != null:
 		if mouse_mov > sway_treshold:
 			rotation = rotation.linear_interpolate(sway_left, sway_lerp * delta)
 		elif mouse_mov < -sway_treshold:

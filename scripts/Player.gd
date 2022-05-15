@@ -17,12 +17,18 @@ onready var hand = $Body/Camera/Hand
 onready var body = $Body
 onready var feet = $Feet
 onready var anim_play = $Body/Camera/AnimationPlayer
+onready var throw_audio = $ThrowAudio
+onready var gunshot_audio = $GunshotAudio
 export var view_sensitivity = 60.0
 export var is_on_floor = false
 var old_move_input = Vector2.ZERO
 export var move_input = Vector2.ZERO
 
 var weapon_mechanics
+var health : int = 100 setget set_health
+
+onready var pause_menu = get_tree().get_current_scene().get_node("PauseMenu")
+var paused = false
 
 func _ready():
 	if is_network_master():
@@ -32,21 +38,28 @@ func _ready():
 
 func _process(delta):
 	if Input.is_action_just_pressed("menu"):
-		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED else Input.MOUSE_MODE_CAPTURED)
+		if paused:
+			pause_menu.visible = false
+			paused = false
+			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+		else:
+			pause_menu.visible = true
+			paused = true
+			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 
-	if is_network_master():
+	if is_network_master() && !paused && health > 0:
 		if Input.is_action_just_pressed("interract") && reach.is_colliding():
 			rpc("grab_weapon", reach.get_collider().get_path())
 		if Input.is_action_just_pressed("debug"):
 			rpc("debug_action", randi() % Global.weapons.size())
 
-sync func debug_action(weapon_id):
+remotesync func debug_action(weapon_id):
 	var weapon_instance = preload("res://scenes/Weapon.tscn").instance()
 	weapon_instance.weapon_mechanics = Global.weapons[weapon_id]
 	get_tree().get_current_scene().get_node("SyncBodies").add_child(weapon_instance)
 	weapon_instance.global_transform.origin = Vector3(0, 10, 0)
 
-sync func grab_weapon(path):
+remotesync func grab_weapon(path):
 	var collider = get_tree().get_current_scene().get_node(path)
 	
 	if collider != null && collider.is_in_group("dropped_weapons"):
@@ -69,28 +82,30 @@ func _physics_process(delta):
 		
 	if is_network_master():
 		old_move_input = move_input
-		move_input = Input.get_vector("left","right","down","up")
+		if paused:
+			move_input = Vector2.ZERO
+		else:
+			move_input = Input.get_vector("left","right","down","up")
 		if old_move_input != move_input:
 			rpc('update_input', move_input)
-		if move_input != Vector2.ZERO:
-			anim_play.play("Bobbing")
 		
-		if mouse_input.length() > 0:
-			eyes.rotation_degrees.x -= mouse_input.y * view_sensitivity * delta;
-			eyes.rotation_degrees.x = clamp(eyes.rotation_degrees.x,-80,80)
-			body.rotation_degrees.y -= mouse_input.x * view_sensitivity * delta;
-			mouse_input = Vector2.ZERO
-			rpc_unreliable('sync_rotation', eyes.rotation_degrees.x, body.rotation_degrees.y)
-		
-		if Input.is_action_just_pressed("throw"):
-			rpc("spawn_grenade")
-		
-		if Input.is_action_just_pressed("jump"):
-			accel_multiplier = 0.1
-			rpc('jump')
-		
-		if Input.is_action_just_pressed("fire"):
-			rpc('fire')
+		if !paused && health > 0:
+			if move_input != Vector2.ZERO:
+				anim_play.play("Bobbing")
+			
+			if mouse_input.length() > 0:
+				eyes.rotation_degrees.x -= mouse_input.y * view_sensitivity * delta;
+				eyes.rotation_degrees.x = clamp(eyes.rotation_degrees.x,-80,80)
+				body.rotation_degrees.y -= mouse_input.x * view_sensitivity * delta;
+				mouse_input = Vector2.ZERO
+				rpc_unreliable('sync_rotation', eyes.rotation_degrees.x, body.rotation_degrees.y)
+			
+			if Input.is_action_just_pressed("jump"):
+				accel_multiplier = 0.1
+				rpc('jump')
+			
+			if Input.is_action_just_pressed("use_weapon"):
+				rpc('use_weapon')
 
 func _integrate_forces(state):
 	if state.linear_velocity.length() < max_speed:
@@ -111,23 +126,12 @@ func _integrate_forces(state):
 
 #mouse input
 func _input(event):
-	if is_network_master() && event is InputEventMouseMotion:
+	if is_network_master() && !paused && event is InputEventMouseMotion:
 		mouse_input = event.relative;
 
-sync func fire():
+remotesync func use_weapon():
 	if weapon_mechanics != null:
 		weapon_mechanics.use(self)
-	
-sync func spawn_grenade():
-	var scene = get_tree().get_current_scene()
-	
-	var grenade_instance = preload("res://scenes/Grenade.tscn").instance()
-	grenade_instance.name = "Grenade" + str(Network.object_name_index)
-	
-	Network.object_name_index += 1
-	scene.get_node("SyncBodies").add_child(grenade_instance)
-	grenade_instance.global_transform.origin = eyes.global_transform.origin
-	grenade_instance.linear_velocity = -eyes.global_transform.basis.z * 10
 
 master func jump():
 	if feet.is_colliding():
@@ -153,23 +157,12 @@ puppet func sync_rotation(x, y):
 puppet func sync_input(move_input):
 	self.move_input = move_input
 
-remote func sync_body(position, velocity, rotation):
-	var difference = position - global_transform.origin
-	if difference.length() > 0.5:
-		global_transform.origin = position
-	
-	difference = linear_velocity - velocity
-	if difference.length() > 0:
-		linear_velocity = velocity
-	
-	if abs(eyes.rotation_degrees.x - rotation.x) > 10:
-		eyes.rotation_degrees.x = rotation.x
-	
-	if abs(body.rotation_degrees.y - rotation.y) > 10:
-		body.rotation_degrees.y = rotation.y
+func damage(amount : int):
+	set_health(health - amount)
 
-func _on_NetworkSyncTimer_timeout():
-	if get_tree().is_network_server():
-		rpc_unreliable('sync_body', global_transform.origin, linear_velocity, Vector2(eyes.rotation_degrees.x, body.rotation_degrees.y))
-	else:
-		$NetworkSyncTimer.stop()
+func set_health(value : int):
+	health = value
+	if is_network_master():
+		get_tree().get_current_scene().get_node("HUD/Label").text = str(health)
+	if health <= 0:
+		visible = false

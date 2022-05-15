@@ -1,0 +1,15 @@
+[remap]
+
+importer="ogg_vorbis"
+type="AudioStreamOGGVorbis"
+path="res://.import/427598__michorvath__ar15-pistol-shot.ogg-ed652113db8f0f63a39ba64ea804e2a2.oggstr"
+
+[deps]
+
+source_file="res://assets/sounds/427598__michorvath__ar15-pistol-shot.ogg"
+dest_files=[ "res://.import/427598__michorvath__ar15-pistol-shot.ogg-ed652113db8f0f63a39ba64ea804e2a2.oggstr" ]
+
+[params]
+
+loop=false
+loop_offset=0

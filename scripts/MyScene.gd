@@ -20,11 +20,13 @@ func _instance_player(id):
 	player_instance.set_network_master(id)
 	player_instance.name = str(id)
 	
-	add_child(player_instance)
+	get_node("PlayerSync").add_child(player_instance)
 	player_instance.global_transform.origin = Vector3(0, 5, 0)
 
 func _player_disconnected(id):
 	print("Player " + str(id) + " has disconnected")
 	
-	if has_node(str(id)):
-		get_node(str(id)).queue_free()
+	var player_sync = get_node("PlayerSync")
+	
+	if player_sync.has_node(str(id)):
+		player_sync.get_node(str(id)).queue_free()

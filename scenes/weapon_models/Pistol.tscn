@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=2]
+
+[ext_resource path="res://assets/pistol.obj" type="ArrayMesh" id=1]
+
+[sub_resource type="SpatialMaterial" id=2]
+albedo_color = Color( 0.443137, 0.443137, 0.443137, 1 )
+metallic = 0.64
+
+[node name="Pistol" type="MeshInstance"]
+transform = Transform( 0.495617, 0, 0, 0, 0.495617, 0, 0, 0, 0.495617, 0, 0, 0 )
+material_override = SubResource( 2 )
+mesh = ExtResource( 1 )
+material/0 = null

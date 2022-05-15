@@ -46,5 +46,3 @@ func _player_connected(id):
 func reset_network_connection():
 	if get_tree().has_network_peer():
 		get_tree().network_peer = null
-
-puppetsync var object_name_index = 0
