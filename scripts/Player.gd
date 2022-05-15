@@ -166,3 +166,9 @@ func set_health(value : int):
 		get_tree().get_current_scene().get_node("HUD/Label").text = str(health)
 	if health <= 0:
 		visible = false
+		if is_network_master():
+			var parent = get_parent()
+			if parent.get_child_count() > 1:
+				for child in parent.get_children():
+					if child.health > 0:
+						child.eyes.make_current()
